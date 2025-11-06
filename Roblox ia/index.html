@@ -1,74 +1,142 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Menú con Imagen</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Roblox-Luau Assistant</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#6ee7b7; --muted:#94a3b8;
+      --sent:#051023;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background: linear-gradient(180deg,#071029 0%, #031025 100%); color:#e6eef8;
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
     }
 
-    /* Barra superior */
-    header {
-      background-color: #333;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 20px;
+    .app{
+      width:100%; max-width:900px; background:var(--card); border-radius:12px; box-shadow:0 10px 30px rgba(2,6,23,.6);
+      overflow:hidden; display:grid; grid-template-rows: auto 1fr auto;
+      min-height:600px;
     }
 
-    /* Imagen del logo */
-    .logo {
-      height: 50px;
+    header{
+      display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid rgba(255,255,255,.04);
+    }
+    header img{height:44px; width:44px; border-radius:8px; background:linear-gradient(90deg,#2563eb,#7c3aed)}
+    header h1{font-size:18px; margin:0}
+    header p{margin:0; color:var(--muted); font-size:13px}
+
+    .messages{
+      padding:18px; overflow:auto; gap:14px; display:flex; flex-direction:column;
+      background: linear-gradient(180deg, rgba(3,7,18,0.4), transparent);
     }
 
-    /* Menú */
-    nav ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-    }
+    .msg{max-width:85%; padding:12px 14px; border-radius:10px; line-height:1.45; white-space:pre-wrap}
+    .user{align-self:flex-end; background:var(--sent); color:#dfefff; border-bottom-right-radius:2px}
+    .assistant{align-self:flex-start; background:linear-gradient(90deg,#032b3b,#02283a); color:#e9fff6}
 
-    nav ul li {
-      margin-left: 20px;
-    }
+    .meta{font-size:12px; color:var(--muted); margin-bottom:6px}
+    .code{background:#011421; padding:12px; border-radius:8px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace; font-size:13px; overflow:auto; border:1px solid rgba(255,255,255,.03)}
 
-    nav ul li a {
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-      transition: color 0.3s;
-    }
+    footer{display:flex; gap:8px; padding:12px; border-top:1px solid rgba(255,255,255,.03); align-items:center}
+    textarea{flex:1; min-height:48px; max-height:160px; resize:none; background:transparent; border:1px solid rgba(255,255,255,.04); color:inherit; padding:10px; border-radius:8px}
+    button{background:linear-gradient(90deg,var(--accent),#3b82f6); color:#022027; border:none; padding:10px 14px; border-radius:8px; font-weight:600; cursor:pointer}
+    .small{font-size:12px; color:var(--muted)}
 
-    nav ul li a:hover {
-      color: #ff9800;
-    }
+    .examples{display:flex; gap:8px; padding:12px 18px; border-top:1px dashed rgba(255,255,255,.03)}
+    .chip{background:rgba(255,255,255,.03); padding:8px 10px; border-radius:999px; cursor:pointer; font-size:13px}
   </style>
 </head>
 <body>
-  <header>
-    <!-- Imagen del logo -->
-    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg" alt="Logo" class="logo">
+  <div class="app" role="application" aria-label="Asistente Roblox Luau">
+    <header>
+      <img src="https://raw.githubusercontent.com/roblox/logo/master/roblox-logo.png" alt="logo">
+      <div>
+        <h1>Roblox Studio — Luau Assistant</h1>
+        <p class="small">Especializado en dudas sobre Roblox Studio, Luau, APIs y buenas prácticas.</p>
+      </div>
+    </header>
 
-    <!-- Menú de navegación -->
-    <nav>
-      <ul>
-        <li><a href="#">Inicio</a></li>
-        <li><a href="#">Servicios</a></li>
-        <li><a href="#">Acerca de</a></li>
-        <li><a href="#">Contacto</a></li>
-      </ul>
-    </nav>
-  </header>
+    <div id="messages" class="messages" aria-live="polite"></div>
 
-  <main style="padding: 20px;">
-    <h1>Bienvenido a mi página</h1>
-    <p>Este es un ejemplo de un menú con una imagen (logo) hecho en HTML y CSS.</p>
-  </main>
+    <div>
+      <div class="examples" id="examples">
+        <div class="chip">¿Cómo crear un RemoteEvent?</div>
+        <div class="chip">Optimizar rendimiento en servidores</div>
+        <div class="chip">Ejemplo de debounce para tool</div>
+      </div>
+      <footer>
+        <textarea id="input" placeholder="Escribe tu duda sobre Roblox/Luau aquí..."></textarea>
+        <button id="send">Enviar</button>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const messagesEl = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const examples = document.getElementById('examples');
+
+    function appendMessage(role, text){
+      const box = document.createElement('div');
+      box.className = 'msg ' + (role === 'user' ? 'user' : 'assistant');
+      if(role === 'assistant'){
+        // parse code blocks
+        const codeRegex = /```(?:lua)?\\n([\\s\\S]*?)```/g;
+        let html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html = html.replace(codeRegex, function(_, code){ return '<div class="code">' + code + '</div>'; });
+        box.innerHTML = html;
+      } else {
+        box.textContent = text;
+      }
+      messagesEl.appendChild(box);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage(text){
+      appendMessage('user', text);
+      input.value = '';
+      appendMessage('assistant', 'Pensando...');
+
+      try{
+        const res = await fetch('/api/chat', {
+          method:'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+        // reemplazar el último mensaje "Pensando..." por la respuesta real
+        const assistantNodes = messagesEl.querySelectorAll('.assistant');
+        const last = assistantNodes[assistantNodes.length-1];
+        if(res.ok){
+          last.innerHTML = data.answer.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/```(?:lua)?\\n([\\s\\S]*?)```/g, function(_, code){ return '<div class="code">'+code+'</div>'; });
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        } else {
+          last.textContent = 'Error: ' + (data.error || 'Respuesta no válida');
+        }
+      }catch(e){
+        const assistantNodes = messagesEl.querySelectorAll('.assistant');
+        assistantNodes[assistantNodes.length-1].textContent = 'Error de red: ' + e.message;
+      }
+    }
+
+    sendBtn.addEventListener('click', ()=>{ const v=input.value.trim(); if(v) sendMessage(v); });
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); const v=input.value.trim(); if(v) sendMessage(v); } });
+
+    examples.addEventListener('click', e=>{
+      const chip = e.target.closest('.chip');
+      if(!chip) return;
+      input.value = chip.textContent;
+      input.focus();
+    });
+
+    // Mensaje de bienvenida
+    appendMessage('assistant', 'Hola 👋 — soy tu asistente especializado en Roblox Studio y Luau. Pregúntame sobre scripts, instancias, RemoteEvents, optimización, debugging o buenas prácticas. No puedo ayudar con hacks, exploits ni con romper reglas de Roblox.');
+  </script>
 </body>
 </html>
